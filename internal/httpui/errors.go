@@ -33,6 +33,7 @@ func handleError(w http.ResponseWriter, err error) {
 	var conflict *journal.ConflictError
 	var idempotency *journal.IdempotencyError
 	var notFound *application.NotFoundError
+	var canceled *application.CanceledError
 	switch {
 	case errors.As(err, &decode):
 		writeError(w, http.StatusBadRequest, "INVALID_JSON", decode.Message)
@@ -56,6 +57,8 @@ func handleError(w http.ResponseWriter, err error) {
 			message = "不可变证书不存在"
 		}
 		writeError(w, http.StatusNotFound, "NOT_FOUND", message)
+	case errors.As(err, &canceled):
+		writeError(w, 499, "REQUEST_CANCELED", "创建会话请求已取消")
 	default:
 		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", "服务处理请求时发生错误")
 	}

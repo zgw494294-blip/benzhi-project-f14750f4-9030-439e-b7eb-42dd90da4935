@@ -1,10 +1,16 @@
 package application
 
 import (
+	"context"
+
 	"stageready/internal/domain"
 )
 
 func (s *Service) CreateSession(command CreateSessionCommand) (CommandResult, error) {
+	return s.createSession(context.Background(), command)
+}
+
+func (s *Service) createSession(ctx context.Context, command CreateSessionCommand) (CommandResult, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := validateCommand(command.ExpectedVersion, command.IdempotencyKey); err != nil {
@@ -28,6 +34,13 @@ func (s *Service) CreateSession(command CreateSessionCommand) (CommandResult, er
 	draft, event, err := domain.CreateSession(domain.CreateSessionInput{ID: command.ID, ProductionName: command.ProductionName, Venue: command.Venue, PerformanceDate: command.PerformanceDate, TechnicalDirector: command.TechnicalDirector}, s.clock())
 	if err != nil {
 		return CommandResult{}, err
+	}
+	if ctx != nil {
+		select {
+		case <-ctx.Done():
+			return CommandResult{}, &CanceledError{Cause: ctx.Err()}
+		default:
+		}
 	}
 	commit, err := s.journal.Append(command.ID, 0, command.IdempotencyKey, []domain.Event{event})
 	if err != nil {

@@ -3,7 +3,6 @@ package application
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"slices"
 	"sync"
@@ -143,20 +142,15 @@ func (s *Service) publish(id string, draft *domain.Aggregate, commit journal.Com
 }
 
 // CreateSessionContext adapts request cancellation to the create workflow.
+// If the context is already canceled, no event is persisted and no in-memory
+// state is published. Once the journal commit and publish succeed, the result
+// is returned as-is so callers never observe a cancellation error for a session
+// that actually was committed.
 func (s *Service) CreateSessionContext(ctx context.Context, command CreateSessionCommand) (CommandResult, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	result, err := s.CreateSession(command)
-	if err != nil {
-		return CommandResult{}, err
-	}
-	select {
-	case <-ctx.Done():
-		return CommandResult{}, fmt.Errorf("create session canceled after commit: %w", ctx.Err())
-	default:
-		return result, nil
-	}
+	return s.createSession(ctx, command)
 }
 
 func (s *Service) Close() error {
