@@ -138,15 +138,21 @@ func (s *Store) rollback(offset int64) {
 func (s *Store) Records() []Record {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return slices.Clone(s.records)
+	records := make([]Record, len(s.records))
+	for index, record := range s.records {
+		records[index] = record
+		records[index].Event.Data = slices.Clone(record.Event.Data)
+	}
+	return records
 }
 
 func (s *Store) Events() []domain.Event {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	events := make([]domain.Event, 0, len(s.records))
-	for _, record := range s.records {
-		events = append(events, record.Event)
+	events := make([]domain.Event, len(s.records))
+	for index, record := range s.records {
+		events[index] = record.Event
+		events[index].Data = slices.Clone(record.Event.Data)
 	}
 	return events
 }
