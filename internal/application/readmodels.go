@@ -92,10 +92,21 @@ func eventLabel(eventType string) string {
 }
 
 func detailOf(aggregate *domain.Aggregate, records []journal.Record) SessionDetail {
-	detail := SessionDetail{Session: aggregate.Session, Devices: aggregate.OrderedDevices(), Cues: aggregate.OrderedCues(), Reviews: slices.Clone(aggregate.Reviews), PendingCue: aggregate.NextPendingCue(), Certificate: aggregate.Certificate}
+	session := aggregate.Session
+	session.DeviceIDs = slices.Clone(session.DeviceIDs)
+	session.CueIDs = slices.Clone(session.CueIDs)
+	reviews := make([]domain.SafetyReview, len(aggregate.Reviews))
+	for index, review := range aggregate.Reviews {
+		reviews[index] = review
+		reviews[index].Findings = slices.Clone(review.Findings)
+	}
+	detail := SessionDetail{Session: session, Devices: aggregate.OrderedDevices(), Cues: aggregate.OrderedCues(), Reviews: reviews, PendingCue: aggregate.NextPendingCue(), Certificate: cloneCertificate(aggregate.Certificate)}
 	for _, cue := range detail.Cues {
 		attempts := aggregate.Attempts[cue.ID]
-		detail.Attempts = append(detail.Attempts, attempts...)
+		for _, attempt := range attempts {
+			attempt.Violations = slices.Clone(attempt.Violations)
+			detail.Attempts = append(detail.Attempts, attempt)
+		}
 		if len(attempts) > 0 {
 			latest := attempts[len(attempts)-1]
 			if len(latest.Violations) > 0 {
@@ -104,9 +115,16 @@ func detailOf(aggregate *domain.Aggregate, records []journal.Record) SessionDeta
 		}
 	}
 	for cueID := range aggregate.CorrectionCueIDs {
-		if task, exists := aggregate.CorrectionTasks[cueID]; exists {
-			detail.CorrectionTasks = append(detail.CorrectionTasks, task)
+		task, exists := aggregate.CorrectionTasks[cueID]
+		if !exists {
+			continue
 		}
+		task.Violations = slices.Clone(task.Violations)
+		if task.ClosedAt != nil {
+			closed := *task.ClosedAt
+			task.ClosedAt = &closed
+		}
+		detail.CorrectionTasks = append(detail.CorrectionTasks, task)
 	}
 	slices.SortFunc(detail.CorrectionTasks, func(left, right domain.CorrectionTask) int {
 		return aggregate.Cues[left.CueID].Sequence - aggregate.Cues[right.CueID].Sequence
@@ -115,10 +133,18 @@ func detailOf(aggregate *domain.Aggregate, records []journal.Record) SessionDeta
 		if record.Event.SessionID != aggregate.Session.ID {
 			continue
 		}
-		detail.Timeline = append(detail.Timeline, TimelineEntry{Sequence: record.Sequence, Version: record.Event.Version, Type: record.Event.Type, Label: eventLabel(record.Event.Type), At: record.Event.At, Checksum: record.Checksum, Data: record.Event.Data})
+		detail.Timeline = append(detail.Timeline, TimelineEntry{Sequence: record.Sequence, Version: record.Event.Version, Type: record.Event.Type, Label: eventLabel(record.Event.Type), At: record.Event.At, Checksum: record.Checksum, Data: slices.Clone(record.Event.Data)})
 	}
 	if detail.Certificate != nil {
 		detail.CertificateValid = domain.VerifyCertificate(*detail.Certificate)
 	}
 	return detail
+}
+
+func cloneCertificate(certificate *domain.ReadinessCertificate) *domain.ReadinessCertificate {
+	if certificate == nil {
+		return nil
+	}
+	copy := *certificate
+	return &copy
 }
