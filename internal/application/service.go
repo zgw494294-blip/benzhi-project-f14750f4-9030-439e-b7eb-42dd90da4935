@@ -2,6 +2,7 @@ package application
 
 import (
 	"errors"
+	"log/slog"
 	"os"
 	"slices"
 	"sync"
@@ -31,9 +32,26 @@ func NewService(store *journal.Store, clock Clock) (*Service, error) {
 	service := &Service{journal: store, sessions: make(map[string]*domain.Aggregate), clock: clock}
 	var snapshot snapshotState
 	if err := store.LoadSnapshot(&snapshot); err == nil && snapshot.Sessions != nil {
-		service.sessions = snapshot.Sessions
-		for _, aggregate := range service.sessions {
+		// 隔离校验和有效但投影载荷损坏的条目（例如聚合反序列化为 null）。
+		// 丢弃这些条目后，仅当事件日志中存在对应事件时才重放恢复，否则查询返回 NotFound。
+		corrupted := false
+		normalized := make(map[string]*domain.Aggregate, len(snapshot.Sessions))
+		for id, aggregate := range snapshot.Sessions {
+			if aggregate == nil {
+				corrupted = true
+				slog.Warn("丢弃损坏的会话投影，将从事件日志恢复", "sessionID", id)
+				continue
+			}
 			aggregate.Normalize()
+			normalized[id] = aggregate
+		}
+		service.sessions = normalized
+		if corrupted {
+			// 快照中存在不可用投影，重放事件日志重建丢失的会话并覆盖快照。
+			if err := service.rebuild(store.Events()); err != nil {
+				return nil, err
+			}
+			_ = service.saveSnapshot()
 		}
 		return service, nil
 	}
