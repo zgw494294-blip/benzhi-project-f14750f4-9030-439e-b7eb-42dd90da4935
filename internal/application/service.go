@@ -30,7 +30,7 @@ func NewService(store *journal.Store, clock Clock) (*Service, error) {
 	}
 	service := &Service{journal: store, sessions: make(map[string]*domain.Aggregate), clock: clock}
 	var snapshot snapshotState
-	if err := store.LoadSnapshot(&snapshot); err == nil && snapshot.Sessions != nil {
+	if err := store.LoadSnapshot(&snapshot); err == nil && snapshot.Sessions != nil && snapshotComplete(snapshot.Sessions, store) {
 		service.sessions = snapshot.Sessions
 		for _, aggregate := range service.sessions {
 			aggregate.Normalize()
@@ -42,6 +42,20 @@ func NewService(store *journal.Store, clock Clock) (*Service, error) {
 	}
 	_ = service.saveSnapshot()
 	return service, nil
+}
+
+// snapshotComplete reports whether the projection snapshot covers every session
+// tracked by the event journal. A checksum-valid snapshot that was produced from
+// a different (for example, externally replaced) projection may omit committed
+// sessions whose events still exist in the journal; in that case the snapshot is
+// treated as incomplete and state is rebuilt from the event log instead.
+func snapshotComplete(sessions map[string]*domain.Aggregate, store *journal.Store) bool {
+	for _, id := range store.SessionIDs() {
+		if sessions[id] == nil {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *Service) rebuild(events []domain.Event) error {

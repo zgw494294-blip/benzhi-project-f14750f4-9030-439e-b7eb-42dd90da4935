@@ -159,6 +159,17 @@ func (s *Store) SessionVersion(id string) uint64 {
 	return s.sessionVersions[id]
 }
 
+// SessionIDs returns the IDs of all sessions that appear in the event journal.
+func (s *Store) SessionIDs() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	ids := make([]string, 0, len(s.sessionVersions))
+	for id := range s.sessionVersions {
+		ids = append(ids, id)
+	}
+	return ids
+}
+
 func (s *Store) LookupCommit(idempotencyKey string) (Commit, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
