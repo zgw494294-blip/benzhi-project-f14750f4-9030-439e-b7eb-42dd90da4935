@@ -16,6 +16,7 @@ func (s *Store) replay() error {
 	scanner.Buffer(make([]byte, 64*1024), 4*1024*1024)
 	previous := ""
 	line := 0
+	latestKeys := make(map[string]string)
 	for scanner.Scan() {
 		line++
 		var record Record
@@ -41,6 +42,14 @@ func (s *Store) replay() error {
 		commit.ToVersion = record.Event.Version
 		commit.Sequence = record.Sequence
 		commit.HeadHash = record.Checksum
+		if priorKey := latestKeys[record.Event.SessionID]; priorKey != "" && priorKey != record.IdempotencyKey {
+			priorCommit := s.idempotency[priorKey]
+			priorCommit.ToVersion = record.Event.Version
+			priorCommit.Sequence = record.Sequence
+			priorCommit.HeadHash = record.Checksum
+			s.idempotency[priorKey] = priorCommit
+		}
+		latestKeys[record.Event.SessionID] = record.IdempotencyKey
 		s.idempotency[record.IdempotencyKey] = commit
 		previous = record.Checksum
 	}
