@@ -2,6 +2,7 @@ package application
 
 import (
 	"errors"
+	"log/slog"
 	"os"
 	"slices"
 	"sync"
@@ -136,7 +137,10 @@ func (s *Service) aggregateCopy(id string) (*domain.Aggregate, error) {
 
 func (s *Service) publish(id string, draft *domain.Aggregate, commit journal.Commit) CommandResult {
 	s.sessions[id] = draft
-	_ = s.saveSnapshot()
+	if err := s.saveSnapshot(); err != nil {
+		// 快照失败只记录日志，调用方仍会收到成功结果。
+		slog.Warn("投影快照保存失败", "error", err, "sessionID", id)
+	}
 	return CommandResult{Commit: commit, Detail: detailOf(draft, s.journal.Records())}
 }
 
