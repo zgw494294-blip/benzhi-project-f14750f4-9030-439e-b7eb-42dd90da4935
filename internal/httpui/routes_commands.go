@@ -12,7 +12,7 @@ func (s *Server) HandleCreateSession(w http.ResponseWriter, r *http.Request) {
 		handleError(w, err)
 		return
 	}
-	result, err := s.application.CreateSession(command)
+	result, err := s.application.CreateSessionContext(r.Context(), command)
 	if err != nil {
 		handleError(w, err)
 		return
