@@ -67,12 +67,8 @@ func (a *Aggregate) Clone() *Aggregate {
 	for id, device := range a.Devices {
 		copy.Devices[id] = device
 	}
-	for id, cue := range a.Cues {
-		copy.Cues[id] = cue
-	}
-	for id, attempts := range a.Attempts {
-		copy.Attempts[id] = slices.Clone(attempts)
-	}
+	copy.Cues = a.Cues
+	copy.Attempts = a.Attempts
 	copy.Reviews = slices.Clone(a.Reviews)
 	for id, needed := range a.CorrectionCueIDs {
 		copy.CorrectionCueIDs[id] = needed
