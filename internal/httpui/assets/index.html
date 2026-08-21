@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#e8ece8">
+  <title>StageReady / 吊挂就绪验证台</title>
+  <link rel="stylesheet" href="/assets/app.css">
+  <link rel="stylesheet" href="/assets/workbench.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-lockup"><span class="brand-mark">SR</span><div><strong>STAGE<span>READY</span></strong><small>吊挂演出就绪验证台</small></div></div>
+    <div class="top-meta"><span class="live-dot"></span><span>本地验证节点</span><span class="mono" id="clock"></span></div>
+  </header>
+  <main class="shell">
+    <section class="hero-row">
+      <div><p class="kicker">剧场技术安全 / OPERATIONS</p><h1>把每一次吊挂动作，<em>验证到可交付。</em></h1><p class="lede">事件链驱动的演出就绪工作台。所有测量、整改与复核都可追溯。</p></div>
+      <div class="hero-stamp"><span>SAFETY</span><strong>01</strong><small>证据优先</small></div>
+    </section>
+    <section class="workspace-grid">
+      <aside class="sidebar">
+        <div class="section-label"><span>验证会话</span><button class="icon-button" id="new-session" title="创建新会话">＋</button></div>
+        <form id="query-form" class="query-panel">
+          <input name="q" placeholder="搜索演出名称" aria-label="演出名称关键字">
+          <div class="filter-pair"><select name="status" aria-label="会话状态"><option value="">全部状态</option><option>Draft</option><option>Prepared</option><option>Running</option><option>Review</option><option>Correction</option><option>Certified</option></select><select name="sort" aria-label="排序"><option value="createdAt">最近创建</option><option value="performanceDate">演出日期</option><option value="failedCount">失败风险</option><option value="productionName">演出名称</option></select></div>
+          <div class="filter-pair"><input name="venue" placeholder="场地" aria-label="场地"><input name="technicalDirector" placeholder="技术负责人" aria-label="技术负责人"></div>
+          <div class="filter-pair"><input name="performanceFrom" type="date" aria-label="演出日期起"><input name="performanceTo" type="date" aria-label="演出日期止"></div>
+          <div class="query-actions"><button type="reset" class="secondary">重置</button><button type="submit" class="primary">筛选</button></div>
+        </form>
+        <div id="risk-summary" class="risk-summary" aria-live="polite"></div>
+        <div id="session-list" class="session-list"><div class="empty-state">载入会话…</div></div>
+        <div class="sidebar-foot"><span class="status-chip"><i></i> 日志完整性正常</span><span class="mono">v39 / LOCAL</span></div>
+      </aside>
+      <section class="content" id="content">
+        <div class="empty-panel"><div class="empty-glyph">◈</div><h2>选择一个验证会话</h2><p>从左侧打开会话，或创建一份新的演出安全验证。</p><button class="primary" id="empty-new">创建验证会话 <span>↗</span></button></div>
+      </section>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status"></div>
+  <dialog id="session-dialog" class="dialog"><form method="dialog" id="session-form"><div class="dialog-head"><div><span class="kicker">NEW VALIDATION</span><h2>创建验证会话</h2></div><button class="icon-button" value="cancel" title="关闭">×</button></div><label>演出名称<input name="productionName" required placeholder="例：仲夏夜之梦 / 首演场"></label><div class="form-grid"><label>演出场地<input name="venue" required placeholder="大剧院主舞台"></label><label>演出日期<input name="performanceDate" type="date" required></label></div><label>技术负责人<input name="technicalDirector" required placeholder="姓名 / 工号"></label><div class="dialog-actions"><button class="secondary" value="cancel">取消</button><button class="primary" value="default">建立 Draft 会话 <span>↗</span></button></div></form></dialog>
+  <dialog id="device-dialog" class="dialog"><form method="dialog" id="device-form"><div class="dialog-head"><div><span class="kicker">RIGGING DEVICE</span><h2>登记吊挂设备</h2></div><button class="icon-button" value="cancel" title="关闭">×</button></div><div class="form-grid"><label>设备名称<input name="name" required placeholder="1# 电动葫芦"></label><label>设备类型<input name="deviceType" required placeholder="电动葫芦 / 吊杆"></label></div><div class="form-grid"><label>额定载荷（kg）<input name="ratedLoadKg" type="number" min="1" step="0.1" required></label><label>安全区域<input name="safeZone" required placeholder="舞台上空 A 区"></label></div><label class="check-label"><input name="emergencyStopRequired" type="checkbox" checked> 必须验证急停时间</label><div class="dialog-actions"><button class="secondary" value="cancel">取消</button><button class="primary" value="default">保存设备 <span>↗</span></button></div></form></dialog>
+  <dialog id="cue-dialog" class="dialog"><form method="dialog" id="cue-form"><div class="dialog-head"><div><span class="kicker">SAFETY CUE</span><h2>配置安全动作</h2></div><button class="icon-button" value="cancel" title="关闭">×</button></div><div class="form-grid"><label>动作序号<input name="sequence" type="number" min="1" required></label><label>关联设备<select name="deviceID" required></select></label></div><label>动作说明<input name="action" required placeholder="吊杆上升至定位线"></label><div class="form-grid"><label>预期载荷（kg）<input name="expectedLoadKg" type="number" min="0.1" step="0.1" required></label><label>最低净空（cm）<input name="minimumClearanceCm" type="number" min="0.1" step="0.1" required></label></div><label>最大急停时间（ms）<input name="maximumStopMs" type="number" min="1" required></label><div class="dialog-actions"><button class="secondary" value="cancel">取消</button><button class="primary" value="default">保存动作 <span>↗</span></button></div></form></dialog>
+  <dialog id="attempt-dialog" class="dialog dialog-wide"><form method="dialog" id="attempt-form"><div class="dialog-head"><div><span class="kicker">DRY RUN EVIDENCE</span><h2>连续动作实测</h2></div><button class="icon-button" value="cancel" title="关闭">×</button></div><label>本批动作数<input id="attempt-count" type="number" min="1" value="1" required></label><div id="attempt-rows" class="stacked-rows"></div><div class="dialog-actions"><button class="secondary" value="cancel">取消</button><button class="primary" value="default">提交整批实测 <span>↗</span></button></div></form></dialog>
+  <dialog id="batch-dialog" class="dialog dialog-wide"><form method="dialog" id="batch-form"><div class="dialog-head"><div><span class="kicker">BATCH BASELINE</span><h2>批量配置预检</h2></div><button class="icon-button" value="cancel" title="关闭">×</button></div><div class="batch-head"><h3>设备</h3><button type="button" class="secondary" id="add-batch-device">＋ 设备行</button></div><div id="batch-devices" class="stacked-rows"></div><div class="batch-head"><h3>动作</h3><button type="button" class="secondary" id="add-batch-cue">＋ 动作行</button></div><div id="batch-cues" class="stacked-rows"></div><div id="preflight-result" class="preflight-result"></div><div class="dialog-actions"><button type="button" class="secondary" id="run-preflight">执行预检</button><button class="primary" id="confirm-batch" value="default" disabled>确认整批配置 <span>↗</span></button></div></form></dialog>
+  <dialog id="correction-dialog" class="dialog dialog-wide"><form method="dialog" id="correction-form"><div class="dialog-head"><div><span class="kicker">CORRECTION LOOP</span><h2>失败动作整改任务</h2></div><button class="icon-button" value="cancel" title="关闭">×</button></div><div id="correction-tasks" class="stacked-rows"></div><div class="dialog-actions"><button class="secondary" value="cancel">取消</button><button class="primary" value="default">保存并提交整改 <span>↗</span></button></div></form></dialog>
+  <dialog id="verification-dialog" class="dialog dialog-wide"><form method="dialog" id="verification-form"><div class="dialog-head"><div><span class="kicker">CHAIN VERIFICATION</span><h2>证书与签发链验真</h2></div><button class="icon-button" value="cancel" title="关闭">×</button></div><label>Digest<input name="digest"></label><label>EventHeadHash<input name="eventHeadHash"></label><label>SessionVersion<input name="sessionVersion" type="number" min="0"></label><div id="verification-result"></div><div class="dialog-actions"><button class="secondary" value="cancel">关闭</button><button class="primary" value="default">只读验真 <span>↗</span></button></div></form></dialog>
+  <script src="/assets/app.js" defer></script>
+</body>
+</html>
